@@ -1,0 +1,168 @@
+package com.example.demoactiviti.controller;
+
+import com.example.demoactiviti.po.CleanOrderRequest;
+import com.example.demoactiviti.po.MhkInstance;
+import com.example.demoactiviti.po.MhkLog;
+import com.example.demoactiviti.po.MhkTask;
+import com.example.demoactiviti.service.MobHouseKeepingService;
+import io.swagger.annotations.Api;
+import org.activiti.engine.HistoryService;
+import org.activiti.engine.RepositoryService;
+import org.activiti.engine.RuntimeService;
+import org.activiti.engine.TaskService;
+import org.activiti.engine.history.HistoricActivityInstance;
+import org.activiti.engine.history.HistoricActivityInstanceQuery;
+import org.activiti.engine.runtime.ProcessInstance;
+import org.activiti.engine.task.Task;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * @author yanzhongliu
+ * @email yanzhongliu@ctrip.com
+ * @date 2021-03-31 11:34
+ */
+@Api("移动工程部")
+@RestController
+@RequestMapping("/mhk")
+public class MobHouseKeepingController {
+
+    @Autowired
+    MobHouseKeepingService mobHouseKeepingService;
+
+    @Autowired
+    TaskService taskService;
+
+    @Autowired
+    RepositoryService repositoryService;
+
+    @Autowired
+    HistoryService historyService;
+
+    @Autowired
+    RuntimeService runtimeService;
+
+    @RequestMapping(value = "/addMhkWorkOrder", method = RequestMethod.POST)
+    public boolean addMhkWorkOrder(@RequestBody CleanOrderRequest request) {
+        return mobHouseKeepingService.addMhkWorkOrder(request);
+    }
+
+    @RequestMapping(value = "/queryProcessInstance", method = RequestMethod.POST)
+    public List<MhkInstance> queryProcessInstance(@RequestBody CleanOrderRequest request) {
+        // 流程定义key
+        String processDefinitionKey = request.getProcessDefinitionKey();
+        String businessKey = request.getId();
+        List<ProcessInstance> instanceList = runtimeService
+                .createProcessInstanceQuery()
+                .processDefinitionKey(processDefinitionKey).processInstanceBusinessKey(businessKey)
+                .list();
+        List<MhkInstance> instances = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(instanceList)) {
+            for (ProcessInstance item : instanceList) {
+                MhkInstance instance = new MhkInstance();
+                instance.setId(item.getId());
+                instance.setProcessDefinitionId(item.getProcessDefinitionId());
+                instance.setProcessDefinitionKey(item.getProcessDefinitionKey());
+                instance.setProcessDefinitionName(item.getProcessDefinitionName());
+                instance.setProcessInstanceId(item.getProcessInstanceId());
+                instance.setProcessDefinitionVersion(item.getProcessDefinitionVersion());
+                instance.setActivityId(item.getActivityId());
+                instances.add(instance);
+            }
+        }
+        return instances;
+    }
+
+    @RequestMapping(value = "/queryTask", method = RequestMethod.POST)
+    public List<MhkTask> queryTask(@RequestBody CleanOrderRequest request) {
+        String processDefinitionKey = request.getProcessDefinitionKey();
+        String businessKey = request.getId();
+        List<Task> taskList = taskService.createTaskQuery()
+                .processDefinitionKey(processDefinitionKey).processInstanceBusinessKey(businessKey).list();
+        List<MhkTask> tasks = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(taskList)) {
+            for (Task item : taskList) {
+                MhkTask task = new MhkTask();
+                task.setId(item.getId());
+                task.setName(item.getName());
+                task.setAssignee(item.getAssignee());
+                task.setProcessDefinitionId(item.getProcessDefinitionId());
+                task.setProcessInstanceId(item.getProcessInstanceId());
+                task.setCreateTime(item.getCreateTime());
+                tasks.add(task);
+            }
+        }
+        return tasks;
+    }
+
+    @RequestMapping(value = "/findHistoryInfo", method = RequestMethod.POST)
+    public List<MhkLog> findHistoryInfo(@RequestBody CleanOrderRequest request) {
+        HistoricActivityInstanceQuery instanceQuery =
+                historyService.createHistoricActivityInstanceQuery();
+        instanceQuery.processInstanceId(request.getInstanceId());
+        // 增加排序操作,orderByHistoricActivityInstanceStartTime 根据开始时间排序 asc 升序
+        instanceQuery.orderByHistoricActivityInstanceStartTime().asc();
+        // 查询所有内容
+        List<HistoricActivityInstance> activityInstanceList = instanceQuery.list();
+        List<MhkLog> logs = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(activityInstanceList)) {
+            for (HistoricActivityInstance item : activityInstanceList) {
+                MhkLog log = new MhkLog();
+                log.setId(item.getId());
+                log.setActivityId(item.getActivityId());
+                log.setActivityName(item.getActivityName());
+                log.setActivityType(item.getActivityType());
+                log.setProcessDefinitionId(item.getProcessDefinitionId());
+                log.setProcessInstanceId(item.getProcessInstanceId());
+                log.setExecutionId(item.getExecutionId());
+                log.setCalledProcessInstanceId(item.getCalledProcessInstanceId());
+                log.setAssignee(item.getAssignee());
+                log.setStartTime(item.getStartTime());
+                log.setEndTime(item.getEndTime());
+                log.setDurationInMillis(item.getDurationInMillis());
+                logs.add(log);
+            }
+        }
+        return logs;
+    }
+
+    @RequestMapping(value = "/completeTask", method = RequestMethod.POST)
+    public void completeTask(@RequestBody CleanOrderRequest request) {
+        // 根据流程key 和 任务的负责人 查询任务
+        // 返回一个任务对象
+        String processDefinitionKey = request.getProcessDefinitionKey();
+        String businessKey = String.valueOf(request.getId());
+        Task task = taskService.createTaskQuery()
+                .processDefinitionKey(processDefinitionKey)
+                .taskAssignee(request.getOperatorName()).processInstanceBusinessKey(businessKey)
+                .singleResult();
+        // 完成任务,参数：任务id
+        taskService.complete(task.getId());
+    }
+
+    @RequestMapping(value = "/completeTaskChoice", method = RequestMethod.POST)
+    public void completeTaskChoice(@RequestBody CleanOrderRequest request) {
+        // 根据流程key 和 任务的负责人 查询任务
+        // 返回一个任务对象
+        String processDefinitionKey = request.getProcessDefinitionKey();
+        String businessKey = String.valueOf(request.getId());
+        String operatorName = request.getOperatorName();
+        Map<String, Object> assigneeMap = new HashMap<>(1);
+        assigneeMap.put("orderStatus", request.getFlag());
+        Task task = taskService.createTaskQuery()
+                .processDefinitionKey(processDefinitionKey)
+                .taskAssignee(operatorName).processInstanceBusinessKey(businessKey)
+                .singleResult();
+        // 完成任务,参数：任务id
+        taskService.complete(task.getId(), assigneeMap);
+    }
+}
