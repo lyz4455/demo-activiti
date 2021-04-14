@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:activiti="http://activiti.org/bpmn" id="Definitions_1ew7fmr" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="3.0.0">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:activiti="http://activiti.org/bpmn" id="Definitions_1ew7fmr" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="3.0.0">
   <bpmn:process id="Process_CleanOrder" name="清扫单" isExecutable="true">
     <bpmn:startEvent id="StartEvent_order" name="开始">
       <bpmn:outgoing>SequenceFlow_0n5joez</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="SequenceFlow_0n5joez" name="派工" sourceRef="StartEvent_order" targetRef="Task_0icliie" />
+    <bpmn:sequenceFlow id="SequenceFlow_0n5joez" name="派工" sourceRef="StartEvent_order" targetRef="Task_0icliie">
+      <bpmn:extensionElements>
+        <camunda:executionListener class="com.example.demoactiviti.common.MyExecutionListener" event="take" />
+      </bpmn:extensionElements>
+    </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="SequenceFlow_19jrp3a" name="清扫结束" sourceRef="Task_0yko310" targetRef="Task_04ps9je" />
     <bpmn:exclusiveGateway id="ExclusiveGateway_0mhgjy5">
       <bpmn:incoming>SequenceFlow_1axtn28</bpmn:incoming>
@@ -22,6 +26,9 @@
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${orderStatus=="1"}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:userTask id="Task_0icliie" name="待处理" activiti:assignee="${worker}">
+      <bpmn:extensionElements>
+        <camunda:taskListener class="com.example.demoactiviti.common.MyExecutionListener" event="create" />
+      </bpmn:extensionElements>
       <bpmn:incoming>SequenceFlow_0n5joez</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_177r3yp</bpmn:outgoing>
       <bpmn:outgoing>SequenceFlow_1g9s1x7</bpmn:outgoing>
