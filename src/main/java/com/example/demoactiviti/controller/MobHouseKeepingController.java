@@ -6,6 +6,7 @@ import com.example.demoactiviti.po.MhkLog;
 import com.example.demoactiviti.po.MhkTask;
 import com.example.demoactiviti.service.MobHouseKeepingService;
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import org.activiti.engine.HistoryService;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.RuntimeService;
@@ -51,19 +52,22 @@ public class MobHouseKeepingController {
     @Autowired
     RuntimeService runtimeService;
 
+    private static final String PROCESS_DEFINITION_KEY = "Process_CleanOrder";
+
+    @ApiOperation(value = "新建工单", notes = "新建工单")
     @RequestMapping(value = "/addMhkWorkOrder", method = RequestMethod.POST)
     public boolean addMhkWorkOrder(@RequestBody CleanOrderRequest request) {
+        request.setProcessDefinitionKey(PROCESS_DEFINITION_KEY);
         return mobHouseKeepingService.addMhkWorkOrder(request);
     }
 
+    @ApiOperation(value = "根据业务Key获取示例", notes = "根据业务Key获取示例")
     @RequestMapping(value = "/queryProcessInstance", method = RequestMethod.POST)
     public List<MhkInstance> queryProcessInstance(@RequestBody CleanOrderRequest request) {
-        // 流程定义key
-        String processDefinitionKey = request.getProcessDefinitionKey();
         String businessKey = request.getId();
         List<ProcessInstance> instanceList = runtimeService
                 .createProcessInstanceQuery()
-                .processDefinitionKey(processDefinitionKey).processInstanceBusinessKey(businessKey)
+                .processDefinitionKey(PROCESS_DEFINITION_KEY).processInstanceBusinessKey(businessKey)
                 .list();
         List<MhkInstance> instances = new ArrayList<>();
         if (!CollectionUtils.isEmpty(instanceList)) {
@@ -82,12 +86,12 @@ public class MobHouseKeepingController {
         return instances;
     }
 
+    @ApiOperation(value = "查询任务根据业务key", notes = "查询任务根据业务key")
     @RequestMapping(value = "/queryTask", method = RequestMethod.POST)
     public List<MhkTask> queryTask(@RequestBody CleanOrderRequest request) {
-        String processDefinitionKey = request.getProcessDefinitionKey();
         String businessKey = request.getId();
         List<Task> taskList = taskService.createTaskQuery()
-                .processDefinitionKey(processDefinitionKey).processInstanceBusinessKey(businessKey).list();
+                .processDefinitionKey(PROCESS_DEFINITION_KEY).processInstanceBusinessKey(businessKey).list();
         List<MhkTask> tasks = new ArrayList<>();
         if (!CollectionUtils.isEmpty(taskList)) {
             for (Task item : taskList) {
@@ -104,6 +108,7 @@ public class MobHouseKeepingController {
         return tasks;
     }
 
+    @ApiOperation(value = "查询任务根据实例id", notes = "查询任务根据实例id")
     @RequestMapping(value = "/findHistoryInfo", method = RequestMethod.POST)
     public List<MhkLog> findHistoryInfo(@RequestBody CleanOrderRequest request) {
         HistoricActivityInstanceQuery instanceQuery =
@@ -135,31 +140,31 @@ public class MobHouseKeepingController {
         return logs;
     }
 
+    @ApiOperation(value = "审核任务", notes = "审核任务")
     @RequestMapping(value = "/completeTask", method = RequestMethod.POST)
     public void completeTask(@RequestBody CleanOrderRequest request) {
         // 根据流程key 和 任务的负责人 查询任务
         // 返回一个任务对象
-        String processDefinitionKey = request.getProcessDefinitionKey();
         String businessKey = String.valueOf(request.getId());
         Task task = taskService.createTaskQuery()
-                .processDefinitionKey(processDefinitionKey)
+                .processDefinitionKey(PROCESS_DEFINITION_KEY)
                 .taskAssignee(request.getOperatorName()).processInstanceBusinessKey(businessKey)
                 .singleResult();
         // 完成任务,参数：任务id
         taskService.complete(task.getId());
     }
 
+    @ApiOperation(value = "审核任务带条件", notes = "审核任务带条件")
     @RequestMapping(value = "/completeTaskChoice", method = RequestMethod.POST)
     public void completeTaskChoice(@RequestBody CleanOrderRequest request) {
         // 根据流程key 和 任务的负责人 查询任务
         // 返回一个任务对象
-        String processDefinitionKey = request.getProcessDefinitionKey();
         String businessKey = String.valueOf(request.getId());
         String operatorName = request.getOperatorName();
-        Map<String, Object> assigneeMap = new HashMap<>(1);
+        Map<String, Object> assigneeMap = new HashMap<>();
         assigneeMap.put("orderStatus", request.getFlag());
         Task task = taskService.createTaskQuery()
-                .processDefinitionKey(processDefinitionKey)
+                .processDefinitionKey(PROCESS_DEFINITION_KEY)
                 .taskAssignee(operatorName).processInstanceBusinessKey(businessKey)
                 .singleResult();
         // 完成任务,参数：任务id
