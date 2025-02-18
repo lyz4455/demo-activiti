@@ -17,10 +17,7 @@ import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.task.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -108,7 +105,7 @@ public class MobHouseKeepingController {
         return tasks;
     }
 
-    @ApiOperation(value = "查询任务根据实例id", notes = "查询任务根据实例id")
+    @ApiOperation(value = "查询历史任务根据实例id", notes = "查询历史任务根据实例id")
     @RequestMapping(value = "/findHistoryInfo", method = RequestMethod.POST)
     public List<MhkLog> findHistoryInfo(@RequestBody CleanOrderRequest request) {
         HistoricActivityInstanceQuery instanceQuery =
@@ -169,5 +166,29 @@ public class MobHouseKeepingController {
                 .singleResult();
         // 完成任务,参数：任务id
         taskService.complete(task.getId(), assigneeMap);
+    }
+
+    @ApiOperation(value = "待办任务列表", notes = "待办任务列表")
+    @RequestMapping(value = "/todoListSomeOne", method = RequestMethod.POST)
+    @ResponseBody
+    public List<MhkTask> todoListSomeOne(@RequestBody CleanOrderRequest request) {
+        // 根据流程key 和 任务的负责人 查询任务
+        List<Task> taskList = taskService.createTaskQuery()
+                .processDefinitionKey(PROCESS_DEFINITION_KEY)
+                .taskAssignee(request.getOperatorName()).list();
+        List<MhkTask> tasks = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(taskList)) {
+            for (Task item : taskList) {
+                MhkTask task = new MhkTask();
+                task.setId(item.getId());
+                task.setName(item.getName());
+                task.setAssignee(item.getAssignee());
+                task.setProcessDefinitionId(item.getProcessDefinitionId());
+                task.setProcessInstanceId(item.getProcessInstanceId());
+                task.setCreateTime(item.getCreateTime());
+                tasks.add(task);
+            }
+        }
+        return tasks;
     }
 }
